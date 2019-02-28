@@ -34,7 +34,8 @@ class HttpServer
              
             if(info.RequestIsCGI())  //判断是否为CGI请求
             {
-                //rsp.CGIHandler(info);  //CGI请求处理
+                std::cout<<"request is CGI!"<<std::endl;
+                rsp.ProcessCGI(info);  //CGI请求处理
             }
             else
             {
@@ -45,7 +46,9 @@ class HttpServer
                     rsp.ProcessList(info);
                 }
                 else
+                {
                     rsp.ProcessFile(info);
+                }
             }
             
             close(sock);

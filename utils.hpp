@@ -103,7 +103,7 @@ class Utils
         }
 
         //字符串转数字
-        static int64_t StrToDigit(std::string &str)
+        static int64_t StrToDigit(const std::string &str)
         {
             int64_t num;
             std::stringstream ss;
@@ -170,7 +170,7 @@ class RequestInfo
     public:
         bool RequestIsCGI() //判断请求类型
         {
-            if((_method == "GET"&&!_query_string.empty()) || (_method == "post"))//如果请求类型为GET但是请求字符串不为空为CGI请求
+            if((_method == "GET"&&!_query_string.empty()) || (_method == "POST"))//如果请求类型为GET但是请求字符串不为空为CGI请求
                 return true;
             return false;
         }
@@ -556,7 +556,8 @@ class HttpResponse
                 int tlen = 0;
                 while(tlen < content_len)
                 {
-                    int rlen = recv(_cli_sock,buf,MAX_BUF,0);
+                    int len = MAX_BUF > (content_len - tlen) ? (content_len - tlen) : MAX_BUF;//保证不多接收
+                    int rlen = recv(_cli_sock,buf,len,0);
                     if(rlen < 0)
                     {
                         //响应错误信息给客户端
@@ -566,7 +567,7 @@ class HttpResponse
                     {
                         return false;
                     }
-
+                    tlen += rlen;
                 }
             }
             //2.通过out管道读取子进程的处理结果直到返回0
