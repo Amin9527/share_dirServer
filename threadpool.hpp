@@ -144,6 +144,3 @@ class ThreadPool
             pthread_cond_destroy(&_cond);
         }
 };
-
-
-

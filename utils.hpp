@@ -39,10 +39,10 @@ std::unordered_map<std::string , std::string> g_err_desc = {
 };
 
 std::unordered_map<std::string, std::string> g_mime_type = {
-    {"txt",    "text/plain"},
+    {"txt",    "application/octet-stream"},
     {"html",   "text/html"},
     {"htm",    "text/html"},
-    {"jpg",    "image/jpeg"},
+    {"jpg",    "application/octet-stream"},
     {"zip",    "application/zip"},
     {"mp3",    "audio/mpeg"},
     {"mpeg",   "video/mpeg"},
@@ -216,7 +216,7 @@ class HttpRequest
                 }
                 int hdr_len = ptr - buf;
                 _http_header.assign(buf, hdr_len); //截取字符串，在buf里截取hdr_len长度的字符串
-                recv(_cli_sock, buf, hdr_len + 4, 0);//再读一次，将首行拿走
+                recv(_cli_sock, buf, hdr_len + 4, 0);//再读一次，请求将头拿走
                 LOG("header:%s\n",_http_header.c_str());
                 break;
             }
@@ -258,28 +258,6 @@ class HttpRequest
             return info;
         }
 };
-
-/*
-   bool PathIsLegal(std::string &path , RequestInfo &info)
-   {
-   std::string file = WWWROOT + info._path_info;
-   if(stat(path.c_str() , &info._st) < 0)
-   {
-   info._err_code = "404";
-   return false;
-   }
-   char tmp[MAX_PATH] = {0};
-   realpath(file.c_str(),tmp);//tmp就是得到的绝对路径
-   info._path_phys = tmp;
-   if(info._path_phys.find(WWWROOT) == std::string::npos)
-   {
-   info._err_code = "403";
-   return false;
-   }
-   return true;
-   }
-   */
-
 
 class HttpResponse
 {
@@ -388,7 +366,6 @@ class HttpResponse
         //文件列表功能
         bool ProcessList(RequestInfo &info)
         {
-
             //组织头部:
             //首行
             //Content-Type：text/html\r\n
@@ -509,20 +486,20 @@ class HttpResponse
             
             int in[2]; //用于向子进程传递正文信息
             int out[2]; //用于从子进程中读取处理结果
-            if(pipe(in) || pipe(out))
+            if(pipe(in) || pipe(out)) //创建匿名管道
             {
                 info._err_code = "500";
                 ErrHandler(info);
                 return false;
             }
-            int pid =fork();
+            int pid =fork();//创建子进程
             if(pid  < 0)
             {
                 info._err_code ="500";
                 ErrHandler(info);
                 return false;
             }
-            else if(pid == 0)
+            else if(pid == 0) //子进程
             {
                 //int setenv() 设置环境变量 #include<stdlib.h>
                 setenv("METHOD",info._method.c_str(),1); //方法
@@ -551,7 +528,7 @@ class HttpResponse
             if(it != info._hdr_list.end())
             {
                 char buf[MAX_BUF]={0};
-                int64_t content_len = Utils::StrToDigit(it->second);
+                int64_t content_len = Utils::StrToDigit(it->second); //获取到正文的长度
 
                 int tlen = 0;
                 while(tlen < content_len)

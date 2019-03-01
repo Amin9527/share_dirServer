@@ -34,7 +34,7 @@ class HttpServer
              
             if(info.RequestIsCGI())  //判断是否为CGI请求
             {
-                std::cout<<"request is CGI!"<<std::endl;
+                //std::cout<<"request is CGI!"<<std::endl;
                 rsp.ProcessCGI(info);  //CGI请求处理
             }
             else
@@ -43,11 +43,11 @@ class HttpServer
                 rsp.InitResponse(info);
                 if(rsp.FileIsDir(info)) //判断是否为目录文件
                 {
-                    rsp.ProcessList(info);
+                    rsp.ProcessList(info); //目录列表展示
                 }
                 else
                 {
-                    rsp.ProcessFile(info);
+                    rsp.ProcessFile(info); //文件下载
                 }
             }
             
@@ -136,6 +136,3 @@ int main(int argc, char* argv[])
     hs.HttpServerInit(ip,port);
     hs.Start();
 }
-
-
-
