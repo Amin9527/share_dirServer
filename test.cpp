@@ -1,4 +1,4 @@
-#include"threadpool.hpp"
+#include "threadpool.hpp"
 
 
 bool test(int i)
@@ -12,10 +12,10 @@ int main()
     ThreadPool* p = new ThreadPool(5);
     p->ThreadPoolInit();
     HttpTask ht;
-    int i=0;
+    int i = 0;
     while(1)
     {
-        ht.SetHttpTask(i,test);
+        ht.SetHttpTask(i, test);
         p->PushTask(ht);
         sleep(1);
         ++i;
