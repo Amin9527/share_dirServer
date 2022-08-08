@@ -9,6 +9,23 @@ enum _boundry_type
     BOUNDRY_BAK
 };
 
+// 上传文件时有个关键词boundary，它的值在请求头部中的Content-Type键值对下
+// 上传的文件内容在请求体中，boundary就是用来表示一个文件内容的开始和结束
+// --boundary就是一个文件的开始，它之后的内容就是文件的内容
+// --boundary--代表着一个文件的结束。
+// -----------------------------------------------------------------------
+// 如果只上传一个文件：
+// --boundary
+// 文件内容
+// --boundary--
+//------------------------------------------------------------------------
+// 多个文件（比如两个）：
+// --boundary
+// 文件一内容
+// --boundary
+// 文件二内容
+// --boundary--
+
 class Upload
 {
     private:
@@ -48,6 +65,7 @@ class Upload
                         return BOUNDRY_LAST;
                     }
                 }
+
                 // 否则，如果剩余长度小于boundry长度，防止出现半个boundry，则匹配剩余
                 else
                 {
@@ -106,10 +124,10 @@ class Upload
 
         bool CreateFile()
         {
-            _file_fd = open(_file_name.c_str(), O_CREAT|O_WRONLY, 0664);
+            _file_fd = open(_file_name.c_str(), O_CREAT | O_WRONLY, 0664);
             if(_file_fd < 0)
             {
-                fprintf(stderr, "open error:%s\n", strerror(errno));
+                fprintf(stderr, "open error : %s\n", strerror(errno));
                 return false;
             }
             return true;

@@ -173,6 +173,7 @@ class RequestInfo
     public:
         bool RequestIsCGI()  // 判断请求类型
         {
+            LOG("_query_string : %s\r\n\n", _query_string.c_str());
             if((_method == "GET" && !_query_string.empty()) || (_method == "POST"))  // 如果请求类型为GET但是请求字符串不为空为CGI请求
                 return true;
             return false;
@@ -191,12 +192,12 @@ class HttpRequest
 
     public:
         HttpRequest(int sock): _cli_sock(sock){}
-        bool RecvHttpHeader() // 接收http请求头
+        bool RecvHttpHeader() // 接收http请求头（请求行+请求头部），并且保存到_http_header
         {
             char buf[MAX_HTTPHDR];
             while(1)
             {
-                int ret = recv(_cli_sock, buf, MAX_HTTPHDR, MSG_PEEK);  // 参数MSG_PEEK，只读不拿，不删除数据，数据还在
+                int ret = recv(_cli_sock, buf, MAX_HTTPHDR, MSG_PEEK);  // 参数MSG_PEEK，只读不拿，不删除数据，数据还在。ret为实际取到的数据字节数
                 if(ret <= 0)  // =0,对端关闭连接
                 {
                     if(errno == EINTR || errno == EAGAIN)  // EINTR被信号打断
@@ -206,21 +207,31 @@ class HttpRequest
                     info.SetError("500");
                     return false;   
                 }
+
+                // 在buf接收到的数据中找空行，找到返回首次出现"\r\n\r\n"位置的指针，没找到返回nullptr
+                // 即：请求行 + 请求头部 + 空行 + 请求正文，找这里的空行
                 char *ptr = strstr(buf, "\r\n\r\n");
+
+                // 没找到，但是接收缓冲区buf已经满了，说明：请求行+请求头部太大，返回error code ：413
                 if((ptr == nullptr) && (ret == MAX_HTTPHDR))
                 {
                     info.SetError("413");
                     return false;
                 }
+
+                // 没找到，但是接收缓冲区buf没满，说明：还在接收，则继续等待接收
                 else if((ptr == nullptr) && (ret < MAX_HTTPHDR))
                 {
                     usleep(1000);
                     continue;
                 }
+
+                // 找到之后，获取请求行+请求头部的大小
                 int hdr_len = ptr - buf;
+
                 _http_header.assign(buf, hdr_len);  // 截取字符串，在buf里截取hdr_len长度的字符串
                 recv(_cli_sock, buf, hdr_len + 4, 0);  // 再读一次，请求将头拿走
-                LOG("header:%s\n", _http_header.c_str());
+                LOG("header:%s\r\n\n", _http_header.c_str());
                 break;
             }
             return true;
@@ -236,7 +247,8 @@ class HttpRequest
             info._method = v_first_line[0];  // 请求方法
             info._version = v_first_line[2];  // 协议及版本
 
-            std::vector<std::string> v_path;
+
+            std::vector<std::string> v_path;  // 请求行的url
             Utils::Split(v_first_line[1], "?", v_path);  // 将请求URL按照"?"分割
             if(v_path.size() == 2)
             {
@@ -282,6 +294,8 @@ class HttpResponse
         bool InitResponse(RequestInfo& req_info)
         { 
             std::string dir = req_info._path_phys;
+
+            // 获取参数一指定的路径下的文件或者文件夹的信息，保存到参数二中
             stat(dir.c_str(), &req_info._st);
             // Last_Modified: 
             Utils::TimeToGMT(req_info._st.st_mtime, _mtime);
@@ -319,10 +333,10 @@ class HttpResponse
         bool ErrHandler(RequestInfo &info)
         {
             std::string rsp_header;  // 响应头信息
-            // 首行 协议版本 状态码 状态描述\r\n
-            // 头部  Content-Length Date
-            // 空行
-            // 正文 rsp_body = "<html><body><h1>404<h1></body></html>"
+            // 首行:协议版本 状态码 状态描述\r\n
+            // 头部:Content-Length Date
+            // 空行:
+            // 正文:rsp_body = "<html><body><h1>404<h1></body></html>"
             rsp_header = info._version + " " + info._err_code + " ";
             rsp_header += Utils::GetErrDesc(info._err_code) + "\r\n";
 
@@ -399,11 +413,17 @@ class HttpResponse
             rsp_body += "<title>Amin" + info._path_info + "</title>";
             rsp_body += "<meta charset = 'UTF-8'>";
             rsp_body += "</head><body>";
-            rsp_body += "<h1>Amin网盘" + info._path_info + "</h1>";
-            rsp_body += "<form action='/upload' method='POST' enctype='multipart/form-data'>";  // 上传文件form表单
+            rsp_body += "<h1>File Transmission Module" + info._path_info + "</h1>";
+
+            // 上传文件form表单
+            // 这个表单创建了一个输入型的选择文件按钮和一个上传按钮
+            // 规定了action为upload_file，method为POST，那当我们选择好文件点击上传按钮后，
+            // 浏览器访问服务器的http请求的请求行里方法即为POST，访问资源即为upload_file
+            rsp_body += "<form action='/upload_file' method='POST' enctype='multipart/form-data'>";
             rsp_body += "<input type='file' name='FileUpLoad' />";  // 选择文件按钮
-            rsp_body += "<input type='submit' value='上传' />";  // 上传按钮
+            rsp_body += "<input type='submit' value='Upload' />";  // 上传按钮
             rsp_body += "</form>";
+
             rsp_body += "<hr /><ol>";  // <hr />横线
             SendCData(rsp_body);
 
@@ -499,7 +519,11 @@ class HttpResponse
                 ErrHandler(info);
                 return false;
             }
-            int pid = fork();  // 创建子进程
+
+            // 创建子进程
+            // fork之后，创建出子进程，父子进程将fork之后的代码都执行一遍
+            // fork给父进程返回子进程的pid，给子进程返回0（子进程的pid不为0）。即：fork后的代码中pid为0的是子进程
+            int pid = fork();
             if(pid  < 0)
             {
                 info._err_code ="500";
@@ -521,7 +545,15 @@ class HttpResponse
                 close(out[0]);  // 关闭子进程的读
                 dup2(in[0], 0);  // 子进程将从标准输入读取正文数据
                 dup2(out[1], 1);  // 子进程直接打印处理结果传递给父进程
-                execl(info._path_phys.c_str(), info._path_phys.c_str(), NULL);
+
+                // execl函数：跳转执行另一个指定的可执行程序
+                // 参数一：要执行的程序路径
+                // 参数二：程序名称，没什么用
+                // 第三个参数开始为执行程序需要的参数，程序 *argv[]接收参数
+                // 最后一个参数为null，告知execl参数列表的结束
+                // execl(info._path_phys.c_str(), info._path_phys.c_str(), NULL);
+                std::string execl_file = "./" + info._path_info;
+                execl(execl_file.c_str(), info._path_info.c_str(), NULL);
                 exit(0);
             }
             close(in[0]);  // 关闭父进程的读

@@ -57,7 +57,7 @@ class HttpServer
             close(sock);
             return false;
         }
-        
+
     public:
         HttpServer() : _serv_sock(-1), _tp(NULL){}
         
@@ -110,7 +110,7 @@ class HttpServer
             {
                 sockaddr_in cli_addr;
                 socklen_t len = sizeof(sockaddr_in);
-                int cli_sock = accept(_serv_sock,(sockaddr*)&cli_addr,&len);
+                int cli_sock = accept(_serv_sock, (sockaddr*)&cli_addr, &len);
                 if(cli_sock < 0)
                 {
                     LOG("accept error: %s\n",strerror(errno));
