@@ -55,3 +55,4 @@ Response回复完client后，该线程继续阻塞在std::queue<HttpTask>队列�
 测试重复commit1
 测试重复commit2
 测试重复commit3
+测试重复commit4
