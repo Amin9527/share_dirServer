@@ -52,3 +52,4 @@ RequestInfo是用来保存维护http请求的头部信息
 
 Response回复完client后，该线程继续阻塞在std::queue<HttpTask>队列，等待下一次任务的到来
 
+测试重复commit1
