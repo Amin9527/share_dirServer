@@ -111,6 +111,8 @@ class HttpServer
                 sockaddr_in cli_addr;
                 socklen_t len = sizeof(sockaddr_in);
                 int cli_sock = accept(_serv_sock, (sockaddr*)&cli_addr, &len);
+                LOG("accept a new client connect, socket = %s\n", strerror(cli_sock));
+                std::cout << "cli_sock = " << cli_sock << std::endl;
                 if(cli_sock < 0)
                 {
                     LOG("accept error: %s\n",strerror(errno));

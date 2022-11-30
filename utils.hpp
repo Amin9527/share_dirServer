@@ -197,7 +197,10 @@ class HttpRequest
             char buf[MAX_HTTPHDR];
             while(1)
             {
+                std::cout << "---recv function start---" << std::endl;
                 int ret = recv(_cli_sock, buf, MAX_HTTPHDR, MSG_PEEK);  // 参数MSG_PEEK，只读不拿，不删除数据，数据还在。ret为实际取到的数据字节数
+                // LOG("recv function return result = %s\n", ret);
+                std::cout << "recv function return = " << ret << std::endl;
                 if(ret <= 0)  // =0,对端关闭连接
                 {
                     if(errno == EINTR || errno == EAGAIN)  // EINTR被信号打断
@@ -211,6 +214,8 @@ class HttpRequest
                 // 在buf接收到的数据中找空行，找到返回首次出现"\r\n\r\n"位置的指针，没找到返回nullptr
                 // 即：请求行 + 请求头部 + 空行 + 请求正文，找这里的空行
                 char *ptr = strstr(buf, "\r\n\r\n");
+
+                LOG("buf context = %s\n", buf);
 
                 // 没找到，但是接收缓冲区buf已经满了，说明：请求行+请求头部太大，返回error code ：413
                 if((ptr == nullptr) && (ret == MAX_HTTPHDR))
@@ -488,11 +493,14 @@ class HttpResponse
                 return false;
             }
 
+            std::cout << "download file send head context = " << std::endl;
+
             int rlen = 0;
             char tmp[MAX_BUF];  // 4096
             while((rlen = read(fd, tmp, MAX_BUF)) > 0)
             {
                 send(_cli_sock, tmp, rlen, 0);
+                std::cout << "download file send context = " << std::endl;
 
                 // tmp[rlen] = '\0';
                 // SendData(tmp);
